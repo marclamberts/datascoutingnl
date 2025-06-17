@@ -11,7 +11,7 @@ db_path = 'players_database(1).db'  # Make sure this file is in your Streamlit a
 conn = sqlite3.connect(db_path)
 
 # Read the SQL table into a DataFrame
-df = pd.read_sql_query("SELECT * FROM players", conn)
+df = pd.read_sql_query("SELECT * FROM Player", conn)
 
 st.subheader("Raw Data")
 st.write(df)
