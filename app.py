@@ -7,31 +7,22 @@ st.title("Wyscout Player Finder")
 
 # --- Load SQLite Database ---
 db_path = 'players_database(3).db'  # Update with your actual database filename
-import os
-print(os.path.exists('players_database(3).db'))
 
 try:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Get list of tables in DB
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = [row[0] for row in cursor.fetchall()]
+    # Check if 'Player' table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Player';")
+    table_exists = cursor.fetchone()
 
-    if not tables:
-        st.error("No tables found in the database.")
+    if not table_exists:
+        st.error("Table 'Player' not found in the database.")
         st.stop()
 
-    # Choose table (prefer 'Player' or 'players', else first table)
-    table_name = None
-    for t in tables:
-        if t.lower() in ['player', 'players']:
-            table_name = t
-            break
-    if not table_name:
-        table_name = tables[0]
+    table_name = 'Player'
 
-    # Load data from table
+    # Load data from 'Player' table
     df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
 
 except Exception as e:
