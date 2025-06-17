@@ -7,7 +7,7 @@ st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 st.title("Wyscout Player Finder")
 
 # Load the SQLite database
-db_path = 'players_database(1).db'  # Make sure this file is in your Streamlit app folder
+db_path = 'players_database.db'  # Make sure this file is in your Streamlit app folder
 conn = sqlite3.connect(db_path)
 
 # Read the SQL table into a DataFrame
