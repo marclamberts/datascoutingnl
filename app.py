@@ -4,14 +4,13 @@ import sqlite3
 import requests
 import os
 
+from st_aggrid import AgGrid, GridOptionsBuilder
+
 # Configure page first
 st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 
-# Optional: Allow larger styling if needed
-pd.set_option('styler.render.max_elements', 1_000_000)
-
 # --- Download the database from GitHub if not already present ---
-db_url = 'https://github.com/marclamberts/datascoutingnl/raw/main/players_database2.db'  # Must be raw link
+db_url = 'https://github.com/marclamberts/datascoutingnl/raw/main/players_database2.db'  # raw link
 db_path = 'players_database2.db'
 
 if not os.path.exists(db_path):
@@ -98,19 +97,25 @@ filtered_df = apply_metric_filter(filtered_df, 'xG per 90', selected_xg_per_90)
 filtered_df = apply_metric_filter(filtered_df, 'Assists per 90', selected_assists_per_90)
 filtered_df = apply_metric_filter(filtered_df, 'xA per 90', selected_xa_per_90)
 
-# --- Display a Sample like FiveThirtyEight Table ---
-st.subheader(f"Showing Top 500 Players (of {len(filtered_df)} total)")
+st.subheader(f"Showing {len(filtered_df)} filtered players")
 
-def fivethirtyeight_style(df):
-    return df.style.set_table_styles(
-        [{
-            'selector': 'thead',
-            'props': [('background-color', '#f0f0f0'), ('font-weight', 'bold')]
-        }]
-    ).format(na_rep='-')
+# --- AgGrid setup for pagination & styling ---
+gb = GridOptionsBuilder.from_dataframe(filtered_df)
+gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=50)
+gb.configure_default_column(groupable=True, value=True, enableRowGroup=True, aggFunc='sum', editable=False)
 
-MAX_ROWS = 500
-st.dataframe(fivethirtyeight_style(filtered_df.head(MAX_ROWS)), use_container_width=True)
+# Optional: style header (simplified example)
+grid_options = gb.build()
+
+AgGrid(
+    filtered_df,
+    gridOptions=grid_options,
+    enable_enterprise_modules=False,
+    theme='blue',  # available themes: 'streamlit', 'light', 'dark', 'blue', 'fresh', 'material'
+    height=600,
+    width='100%',
+    reload_data=True,
+)
 
 # --- Download Button for Full Dataset ---
 st.download_button(
