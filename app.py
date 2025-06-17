@@ -7,6 +7,8 @@ st.title("Wyscout Player Finder")
 
 # --- Load SQLite Database ---
 db_path = 'players_database(3).db'  # Update with your actual database filename
+import os
+print(os.path.exists('players_database(3).db'))
 
 try:
     conn = sqlite3.connect(db_path)
