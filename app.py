@@ -3,7 +3,6 @@ import pandas as pd
 import sqlite3
 import requests
 import os
-
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 # Configure page first
@@ -36,10 +35,6 @@ if df.empty:
     st.warning("The table 'Player' is empty.")
     st.stop()
 
-# --- Preprocess Contract expires column to extract year if present ---
-if 'Contract expires' in df.columns:
-    df['Contract expires'] = pd.to_datetime(df['Contract expires'], errors='coerce').dt.year.astype('Int64')
-
 st.title("Wyscout Player Finder")
 
 # --- Sidebar Filters ---
@@ -48,14 +43,14 @@ st.sidebar.header("Filter Players")
 positions = sorted(df['Position'].dropna().unique()) if 'Position' in df.columns else []
 teams = sorted(df['Team'].dropna().unique()) if 'Team' in df.columns else []
 leagues = sorted(df['League'].dropna().unique()) if 'League' in df.columns else []
-nationalities = sorted(df['Nationality'].dropna().unique()) if 'Nationality' in df.columns else []
-contract_expires = sorted(df['Contract expires'].dropna().unique()) if 'Contract expires' in df.columns else []
+passport_countries = sorted(df['Passport country'].dropna().unique()) if 'Passport country' in df.columns else []
+contracts = sorted(df['Contract expires'].dropna().unique()) if 'Contract expires' in df.columns else []
 
 selected_positions = st.sidebar.multiselect("Select Position(s)", positions)
 selected_teams = st.sidebar.multiselect("Select Team(s)", teams)
 selected_leagues = st.sidebar.multiselect("Select League(s)", leagues)
-selected_nationalities = st.sidebar.multiselect("Select Nationality(s)", nationalities)
-selected_contracts = st.sidebar.multiselect("Select Contract Expiry Year(s)", contract_expires)
+selected_passport_countries = st.sidebar.multiselect("Select Passport Country(s)", passport_countries)
+selected_contracts = st.sidebar.multiselect("Select Contract Expiry Year(s)", contracts)
 
 min_age = int(df['Age'].min()) if 'Age' in df.columns else 15
 max_age = int(df['Age'].max()) if 'Age' in df.columns else 40
@@ -83,8 +78,8 @@ if selected_teams:
 if selected_leagues:
     filtered_df = filtered_df[filtered_df['League'].isin(selected_leagues)]
 
-if selected_nationalities:
-    filtered_df = filtered_df[filtered_df['Nationality'].isin(selected_nationalities)]
+if selected_passport_countries:
+    filtered_df = filtered_df[filtered_df['Passport country'].isin(selected_passport_countries)]
 
 if selected_contracts:
     filtered_df = filtered_df[filtered_df['Contract expires'].isin(selected_contracts)]
@@ -130,9 +125,9 @@ AgGrid(
     reload_data=True,
 )
 
-# --- Download Button for Filtered Dataset ---
+# --- Download Button for Full Dataset ---
 st.download_button(
-    label="Download Filtered Data",
+    label="Download Full Filtered Data",
     data=filtered_df.to_csv(index=False),
     file_name="filtered_players.csv",
     mime="text/csv"
