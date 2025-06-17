@@ -8,7 +8,7 @@ st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 st.title("Wyscout Player Finder")
 
 # --- Database path ---
-db_path = 'players_database(3).db'  # Rename your DB file to this for simplicity
+db_path = 'players_database(4).db'  # Rename your DB file to this for simplicity
 st.write(f"Using database file: `{db_path}`")
 
 # Check if database file exists
