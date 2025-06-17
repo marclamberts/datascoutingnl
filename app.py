@@ -36,6 +36,10 @@ if df.empty:
     st.warning("The table 'Player' is empty.")
     st.stop()
 
+# --- Preprocess Contract expires column to extract year if present ---
+if 'Contract expires' in df.columns:
+    df['Contract expires'] = pd.to_datetime(df['Contract expires'], errors='coerce').dt.year.astype('Int64')
+
 st.title("Wyscout Player Finder")
 
 # --- Sidebar Filters ---
@@ -44,10 +48,14 @@ st.sidebar.header("Filter Players")
 positions = sorted(df['Position'].dropna().unique()) if 'Position' in df.columns else []
 teams = sorted(df['Team'].dropna().unique()) if 'Team' in df.columns else []
 leagues = sorted(df['League'].dropna().unique()) if 'League' in df.columns else []
+nationalities = sorted(df['Nationality'].dropna().unique()) if 'Nationality' in df.columns else []
+contract_expires = sorted(df['Contract expires'].dropna().unique()) if 'Contract expires' in df.columns else []
 
 selected_positions = st.sidebar.multiselect("Select Position(s)", positions)
 selected_teams = st.sidebar.multiselect("Select Team(s)", teams)
 selected_leagues = st.sidebar.multiselect("Select League(s)", leagues)
+selected_nationalities = st.sidebar.multiselect("Select Nationality(s)", nationalities)
+selected_contracts = st.sidebar.multiselect("Select Contract Expiry Year(s)", contract_expires)
 
 min_age = int(df['Age'].min()) if 'Age' in df.columns else 15
 max_age = int(df['Age'].max()) if 'Age' in df.columns else 40
@@ -74,6 +82,12 @@ if selected_teams:
 
 if selected_leagues:
     filtered_df = filtered_df[filtered_df['League'].isin(selected_leagues)]
+
+if selected_nationalities:
+    filtered_df = filtered_df[filtered_df['Nationality'].isin(selected_nationalities)]
+
+if selected_contracts:
+    filtered_df = filtered_df[filtered_df['Contract expires'].isin(selected_contracts)]
 
 if 'Age' in filtered_df.columns:
     filtered_df = filtered_df[(filtered_df['Age'] >= age_range[0]) & (filtered_df['Age'] <= age_range[1])]
@@ -104,22 +118,21 @@ gb = GridOptionsBuilder.from_dataframe(filtered_df)
 gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=50)
 gb.configure_default_column(groupable=True, value=True, enableRowGroup=True, aggFunc='sum', editable=False)
 
-# Optional: style header (simplified example)
 grid_options = gb.build()
 
 AgGrid(
     filtered_df,
     gridOptions=grid_options,
     enable_enterprise_modules=False,
-    theme='blue',  # available themes: 'streamlit', 'light', 'dark', 'blue', 'fresh', 'material'
+    theme='blue',  # themes: 'streamlit', 'light', 'dark', 'blue', 'fresh', 'material'
     height=600,
     width='100%',
     reload_data=True,
 )
 
-# --- Download Button for Full Dataset ---
+# --- Download Button for Filtered Dataset ---
 st.download_button(
-    label="Download Full Filtered Data",
+    label="Download Filtered Data",
     data=filtered_df.to_csv(index=False),
     file_name="filtered_players.csv",
     mime="text/csv"
