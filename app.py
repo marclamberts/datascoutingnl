@@ -1,5 +1,6 @@
-import sqlite3
 import streamlit as st
+import pandas as pd
+import sqlite3
 
 db_path = 'players_database(3).db'  # Your DB file
 conn = sqlite3.connect(db_path)
@@ -15,11 +16,6 @@ else:
     st.success("Player table found!")
 
 conn.close()
-
-
-import streamlit as st
-import pandas as pd
-import sqlite3
 
 st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 st.title("Wyscout Player Finder")
