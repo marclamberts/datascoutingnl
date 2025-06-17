@@ -5,8 +5,8 @@ import requests
 import os
 
 # --- Step 1: Download the database from GitHub if not already present ---
-db_url = 'https://github.com/marclamberts/datascoutingnl/blob/main/players_database1.db'  # Replace with your actual link
-db_path = 'players_database1.db'
+db_url = 'https://github.com/marclamberts/datascoutingnl/blob/main/players_database2.db'  # Replace with your actual link
+db_path = 'players_database2.db'
 
 if not os.path.exists(db_path):
     st.info('Downloading database...')
