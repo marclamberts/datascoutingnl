@@ -6,7 +6,7 @@ st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 st.title("Wyscout Player Finder")
 
 # Load the SQLite database
-db_path = 'players_database(1).db'  # Ensure this is your correct DB file
+db_path = 'players_database(2).db'  # Ensure this is your correct DB file
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
 
