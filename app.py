@@ -4,11 +4,11 @@ import sqlite3
 import requests
 import os
 
-# ✅ This must come first
+# ✅ This must come first and only once
 st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 
 # --- Step 1: Download the database from GitHub if not already present ---
-db_url = 'https://github.com/marclamberts/datascoutingnl/blob/main/players_database2.db'  # Replace with your actual link
+db_url = 'https://github.com/marclamberts/datascoutingnl/raw/main/players_database2.db'  # ✅ raw link required
 db_path = 'players_database2.db'
 
 if not os.path.exists(db_path):
@@ -36,7 +36,7 @@ if ('Player',) not in tables:
 else:
     st.success("Player table found!")
 
-st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
+# ✅ Remove second set_page_config
 st.title("Wyscout Player Finder")
 
 # Load data from 'Player' table
