@@ -107,7 +107,18 @@ filtered_df = apply_metric_filter(filtered_df, 'Assists per 90', selected_assist
 filtered_df = apply_metric_filter(filtered_df, 'xA per 90', selected_xa_per_90)
 
 st.subheader("Filtered Players")
-st.dataframe(filtered_df)
+
+# --- FiveThirtyEight style table ---
+def fivethirtyeight_style(df):
+    return df.style\
+        .set_table_styles(
+            [{'selector': 'th', 'props': [('background-color', '#f0f0f0'), ('color', 'black'), ('font-weight', 'bold')]}]
+        )\
+        .applymap(lambda x: 'background-color: #f9f9f9', subset=pd.IndexSlice[df.index[::2], :])\
+        .format(precision=2)\
+        .set_properties(**{'font-family': 'Arial', 'font-size': '14px'})
+
+st.dataframe(fivethirtyeight_style(filtered_df), use_container_width=True)
 
 # Download button
 st.download_button(
