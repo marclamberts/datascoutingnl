@@ -21,9 +21,11 @@ st.sidebar.header("Filter Players")
 
 positions = df['Position'].unique() if 'Position' in df.columns else []
 teams = df['Team'].unique() if 'Team' in df.columns else []
+leagues = df['League'].unique() if 'League' in df.columns else []
 
 selected_positions = st.sidebar.multiselect("Select Position(s)", positions)
 selected_teams = st.sidebar.multiselect("Select Team(s)", teams)
+selected_leagues = st.sidebar.multiselect("Select League(s)", leagues)
 
 min_age = int(df['Age'].min()) if 'Age' in df.columns else 15
 max_age = int(df['Age'].max()) if 'Age' in df.columns else 40
@@ -52,6 +54,9 @@ if selected_positions:
 
 if selected_teams:
     filtered_df = filtered_df[filtered_df['Team'].isin(selected_teams)]
+
+if selected_leagues:
+    filtered_df = filtered_df[filtered_df['League'].isin(selected_leagues)]
 
 if 'Age' in df.columns:
     filtered_df = filtered_df[(filtered_df['Age'] >= age_range[0]) & (filtered_df['Age'] <= age_range[1])]
