@@ -4,6 +4,9 @@ import sqlite3
 import requests
 import os
 
+# ✅ This must come first
+st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
+
 # --- Step 1: Download the database from GitHub if not already present ---
 db_url = 'https://github.com/marclamberts/datascoutingnl/blob/main/players_database2.db'  # Replace with your actual link
 db_path = 'players_database2.db'
