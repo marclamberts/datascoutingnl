@@ -1,60 +1,53 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import requests
 import os
 
-# Set page config
+# --- Step 1: Download the database from GitHub if not already present ---
+db_url = 'https://github.com/marclamberts/datascoutingnl/blob/main/players_database%20(4).db'  # Replace with your actual link
+db_path = 'players_database4.db'
+
+if not os.path.exists(db_path):
+    st.info('Downloading database...')
+    response = requests.get(db_url)
+    if response.status_code == 200:
+        with open(db_path, 'wb') as f:
+            f.write(response.content)
+        st.success('Database downloaded successfully!')
+    else:
+        st.error('Failed to download database. Check the URL.')
+        st.stop()
+
+# --- Step 2: Connect to SQLite database ---
+conn = sqlite3.connect(db_path)
+cursor = conn.cursor()
+
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+tables = cursor.fetchall()
+st.write("Tables found in database:", tables)
+
+if ('Player',) not in tables:
+    st.error("Player table not found!")
+    st.stop()
+else:
+    st.success("Player table found!")
+
 st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 st.title("Wyscout Player Finder")
 
-# --- Database path ---
-db_path = 'players_database(4).db'  # Rename your DB file to this for simplicity
-st.write(f"Using database file: `{db_path}`")
-
-# Check if database file exists
-if not os.path.exists(db_path):
-    st.error(f"Database file not found at: {db_path}")
-    st.stop()
-else:
-    st.success(f"Database file found, size: {os.path.getsize(db_path)} bytes")
-
-# Connect to DB and check tables
+# Load data from 'Player' table
 try:
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-
-    # Fetch table names
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = [row[0] for row in cursor.fetchall()]
-    st.write("Tables found in database:", tables)
-
-    # Check if 'Player' table exists (case-insensitive)
-    player_table = None
-    for table in tables:
-        if table.lower() == 'player':
-            player_table = table
-            break
-
-    if not player_table:
-        st.error("Table named 'Player' not found in the database.")
-        conn.close()
-        st.stop()
-    else:
-        st.success(f"Using table: {player_table}")
-
-    # Load data from the Player table
-    df = pd.read_sql_query(f"SELECT * FROM {player_table}", conn)
-
+    df = pd.read_sql_query("SELECT * FROM Player", conn)
 except Exception as e:
-    st.error(f"Error loading database or reading table: {e}")
+    st.error(f"Error loading table: {e}")
     st.stop()
 
 if df.empty:
-    st.warning(f"The table '{player_table}' is empty.")
-    conn.close()
+    st.warning("The table 'Player' is empty.")
     st.stop()
 
-st.subheader(f"Raw Data from table: {player_table}")
+st.subheader("Raw Data from table: Player")
 st.dataframe(df)
 
 # --- Sidebar Filters ---
@@ -76,6 +69,7 @@ min_minutes = int(df['Minutes played'].min()) if 'Minutes played' in df.columns 
 max_minutes = int(df['Minutes played'].max()) if 'Minutes played' in df.columns else 5000
 minutes_range = st.sidebar.slider("Select Minutes Played Range", min_minutes, max_minutes, (min_minutes, max_minutes))
 
+# Performance metric filter options
 metric_options = ['All', '0 - 0.3', '0.3 - 0.6', '0.6+']
 
 selected_goals_per_90 = st.sidebar.selectbox("Select Goals per 90 Range", metric_options)
