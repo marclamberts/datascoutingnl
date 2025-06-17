@@ -1,3 +1,22 @@
+import sqlite3
+import streamlit as st
+
+db_path = 'players_database(3).db'  # Your DB file
+conn = sqlite3.connect(db_path)
+cursor = conn.cursor()
+
+cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+tables = cursor.fetchall()
+st.write("Tables found in database:", tables)
+
+if ('Player',) not in tables:
+    st.error("Player table not found!")
+else:
+    st.success("Player table found!")
+
+conn.close()
+
+
 import streamlit as st
 import pandas as pd
 import sqlite3
