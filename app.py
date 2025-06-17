@@ -1,22 +1,24 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 
 st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 
 st.title("Wyscout Player Finder")
 
-# Load the Excel file directly
-file_path = 'Netherlands II.xlsx'  # Change this to your actual file path
-df = pd.read_excel(file_path)
+# Load the SQLite database
+db_path = 'goalkeepers.db'  # Make sure this file is in your Streamlit app folder
+conn = sqlite3.connect(db_path)
+
+# Read the SQL table into a DataFrame
+df = pd.read_sql_query("SELECT * FROM goalkeepers", conn)
 
 st.subheader("Raw Data")
 st.write(df)
 
-# Automatically detect columns for filtering
+# Sidebar Filters
 st.sidebar.header("Filter Players")
 
-# Example: Assuming 'Position', 'Team', 'Age', 'Minutes played' are in your dataset
-# You can customize these fields based on your actual Wyscout data columns
 positions = df['Position'].unique() if 'Position' in df.columns else []
 teams = df['Team'].unique() if 'Team' in df.columns else []
 
@@ -31,7 +33,7 @@ min_minutes = int(df['Minutes played'].min()) if 'Minutes played' in df.columns 
 max_minutes = int(df['Minutes played'].max()) if 'Minutes played' in df.columns else 5000
 minutes_range = st.sidebar.slider("Select Minutes Played Range", min_minutes, max_minutes, (min_minutes, max_minutes))
 
-# New filters for performance metrics
+# Performance metric filters
 goals_per_90_options = ['All', '0 - 0.3', '0.3 - 0.6', '0.6+']
 xg_per_90_options = ['All', '0 - 0.3', '0.3 - 0.6', '0.6+']
 assists_per_90_options = ['All', '0 - 0.3', '0.3 - 0.6', '0.6+']
@@ -96,4 +98,13 @@ if 'xA per 90' in df.columns:
 st.subheader("Filtered Players")
 st.write(filtered_df)
 
-st.download_button("Download Filtered Data", data=filtered_df.to_csv(index=False), file_name="filtered_players.csv", mime="text/csv")
+# Download button
+st.download_button(
+    label="Download Filtered Data",
+    data=filtered_df.to_csv(index=False),
+    file_name="filtered_players.csv",
+    mime="text/csv"
+)
+
+# Close the connection
+conn.close()
