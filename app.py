@@ -5,6 +5,8 @@ from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+import sqlite3
+from sqlite3 import Error
 
 # ==============================================
 # CONFIGURATION
@@ -22,12 +24,18 @@ st.set_page_config(
 # ==============================================
 
 @st.cache_data(ttl=24*60*60)  # Refresh daily
-def load_database(file_path):
-    """Load and prepare the player data from the CSV file"""
+def load_database(db_path):
+    """Load and prepare the player data from SQLite database"""
     try:
-        df = pd.read_csv(file_path)
+        # Connect to SQLite database
+        conn = sqlite3.connect(db_path)
+        
+        # Read the entire table (assuming it's named 'players')
+        df = pd.read_sql_query("SELECT * FROM players", conn)
+        
+        # Close the connection
+        conn.close()
 
-        # Initial Data Cleaning and Transformation
         # Standardize column names: strip spaces, replace spaces with underscores, handle special chars, convert to lowercase
         df.columns = df.columns.str.strip().str.replace(' ', '_').str.replace('%', '_perc').str.replace(',', '').str.replace('__', '_').str.lower()
 
@@ -35,7 +43,7 @@ def load_database(file_path):
         df = df.rename(columns={
             'player': 'player_name',
             'market_value': 'market_value_eur',
-            'contract_expires': 'contract_expires_date', # Renaming to avoid confusion with year
+            'contract_expires': 'contract_expires_date',
             'birth_country': 'passport_country',
             'foot': 'preferred_foot',
             'minutes_played': 'minutes_played_total',
@@ -43,7 +51,7 @@ def load_database(file_path):
             'assists': 'assists_total',
             'shots': 'shots_total',
             'key_passes': 'key_passes_total',
-            'dribbles_per_90': 'dribbles_attempted_per_90', # CSV has this as per 90, so keep it
+            'dribbles_per_90': 'dribbles_attempted_per_90',
         })
 
         # Drop rows where 'player_name' is entirely NaN
@@ -54,7 +62,7 @@ def load_database(file_path):
             df['contract_expires_date'] = pd.to_datetime(df['contract_expires_date'], errors='coerce')
             df['contract_expires_year'] = df['contract_expires_date'].dt.year.fillna(2100).astype(int)
         else:
-            df['contract_expires_year'] = 2100 # Default if column is missing
+            df['contract_expires_year'] = 2100
 
         # Convert relevant columns to numeric, coercing errors and filling NaNs
         numeric_cols_to_process = [
@@ -63,7 +71,7 @@ def load_database(file_path):
             'shots_total', 'shots_on_target_perc',
             'dribbles_attempted_per_90', 'successful_dribbles_perc', 'touches_in_box_per_90', 'key_passes_total',
             'passes_per_90', 'accurate_passes_per_90', 'pass_accuracy_perc',
-            'interceptions_per_90', 'tackles_per_90', 'shots_blocked_per_90', 'successful_defensive_actions_per_90', # 'blocks' and 'clearances' proxies
+            'interceptions_per_90', 'tackles_per_90', 'shots_blocked_per_90', 'successful_defensive_actions_per_90',
             'aerial_duels_won_perc', 'defensive_duels_won_perc',
             'saves', 'clean_sheets', 'conceded_goals',
             'minutes_played_total',
@@ -97,7 +105,7 @@ def load_database(file_path):
             else:
                 df[new_per90_col] = 0
 
-        # Ensure essential columns exist after all processing, providing defaults if not
+        # Ensure essential columns exist after all processing
         essential_str_cols = ['position', 'team', 'league', 'passport_country', 'preferred_foot']
         for col in essential_str_cols:
             if col not in df.columns:
@@ -107,11 +115,8 @@ def load_database(file_path):
 
         return df
 
-    except FileNotFoundError:
-        st.error(f"Error: The file '{file_path}' was not found.")
-        st.stop()
-    except pd.errors.EmptyDataError:
-        st.error(f"Error: The file '{file_path}' is empty.")
+    except Error as e:
+        st.error(f"Error connecting to SQLite database: {str(e)}")
         st.stop()
     except Exception as e:
         st.error(f"An error occurred while loading or processing the data: {str(e)}")
@@ -135,19 +140,19 @@ def safe_mean(series, format_str=".2f"):
 # ==============================================
 
 def main():
-    # Define the CSV file path
-    csv_file_path = 'Albania 2024-2025.xlsx - Search results (298).csv'
+    # Define the database file path
+    db_file_path = 'players_database2.db'
 
-    if not os.path.exists(csv_file_path):
-        st.error(f"The required data file '{csv_file_path}' was not found. Please ensure it's in the same directory.")
+    if not os.path.exists(db_file_path):
+        st.error(f"The required database file '{db_file_path}' was not found. Please ensure it's in the same directory.")
         st.stop()
 
     # Load data with progress indicator
-    with st.spinner("Loading and processing player data from CSV..."):
-        df = load_database(csv_file_path)
+    with st.spinner("Loading and processing player data from database..."):
+        df = load_database(db_file_path)
 
     if df.empty:
-        st.warning("No player data available after loading. Please check the CSV file and processing steps.")
+        st.warning("No player data available after loading. Please check the database file and processing steps.")
         st.stop()
 
     # ==============================================
@@ -157,7 +162,7 @@ def main():
     st.sidebar.title("🔍 Advanced Filters")
     st.sidebar.markdown("---")
 
-    # Dynamic filter options based on available data (all lowercase column names)
+    # Dynamic filter options based on available data
     positions = sorted(df['position'].dropna().unique())
     teams = sorted(df['team'].dropna().unique())
     leagues = sorted(df['league'].dropna().unique())
@@ -237,7 +242,7 @@ def main():
 
     # Market Value Filter
     if 'market_value_eur' in df.columns and not df['market_value_eur'].empty:
-        slider_max_value = max(int(df['market_value_eur'].max() * 1.2), 1000000) # Add a buffer or a minimum high value
+        slider_max_value = max(int(df['market_value_eur'].max() * 1.2), 1000000)
         min_value, max_value = int(df['market_value_eur'].min()), int(df['market_value_eur'].max())
 
         market_value_range = st.sidebar.slider(
@@ -255,7 +260,6 @@ def main():
     st.sidebar.markdown("### Performance Metrics (per 90 & Percentages)")
     metric_ranges = {}
 
-    # Define a broader set of metrics for filtering, using the processed column names (all lowercase)
     advanced_metric_columns = [
         'goals_per_90', 'xg_per_90', 'assists_per_90', 'xa_per_90',
         'shots_per_90', 'key_passes_per_90', 'dribbles_attempted_per_90',
@@ -271,9 +275,9 @@ def main():
             max_val = float(df[metric].max())
             step = 0.01 if max_val - min_val < 5 else 0.1
             if metric.endswith('_perc'):
-                step = 1.0 # Percentages usually step by 1
-                min_val = max(0.0, min_val) # Ensure percentages don't go negative
-                max_val = min(100.0, max_val) # Ensure percentages don't go above 100
+                step = 1.0
+                min_val = max(0.0, min_val)
+                max_val = min(100.0, max_val)
 
             values = st.sidebar.slider(
                 f"{metric.replace('_', ' ').replace('per 90', '/90').replace('perc', '%')}",
@@ -305,7 +309,6 @@ def main():
     )
     default_sort_asc = False if sort_by in ['market_value_eur', 'goals_per_90', 'xg_per_90', 'assists_per_90'] else True
     sort_asc = st.sidebar.checkbox("Ascending", default_sort_asc, help="Check for ascending (A-Z, 0-9) order, uncheck for descending.")
-
 
     # ==============================================
     # MAIN CONTENT
@@ -366,7 +369,7 @@ def main():
     if 'contract_expires_year' in filtered_df.columns and filters.get('contract_year_range'):
         filtered_df = filtered_df[
             (filtered_df['contract_expires_year'] >= filters['contract_year_range'][0]) &
-            (filtered_df['contract_expires_year'] <= filters['contract_expires_year'][1])
+            (filtered_df['contract_expires_year'] <= filters['contract_year_range'][1])
         ]
     if 'market_value_eur' in filtered_df.columns and filters.get('market_value_range'):
         filtered_df = filtered_df[
@@ -432,7 +435,7 @@ def main():
         for col_name in display_cols:
             if col_name in filtered_df.columns:
                 header_name = col_name.replace('_', ' ').replace('perc', '%').replace('total', '(Total)').replace('per 90', '/90')
-                if col_name.endswith('_per_90') or col_name in ['xg', 'xa', 'shots_per_90']: # xg and xa are direct, not per 90 in raw
+                if col_name.endswith('_per_90') or col_name in ['xg', 'xa', 'shots_per_90']:
                     gb.configure_column(col_name, type=["numericColumn", "numberColumnFilter"],
                                         valueFormatter=JsCode("function(params) { return params.value != null ? params.value.toFixed(2) : 'N/A'; }").js_code,
                                         headerName=header_name)
@@ -506,7 +509,6 @@ def main():
                 st.markdown(f"**Position:** {player_data.get('position', 'N/A')} | **Team:** {player_data.get('team', 'N/A')} | **League:** {player_data.get('league', 'N/A')}")
                 st.markdown(f"**Nationality:** {player_data.get('passport_country', 'N/A')} | **Preferred Foot:** {player_data.get('preferred_foot', 'N/A')}")
                 st.markdown(f"**Age:** {int(player_data.get('age', 0))} | **Height:** {int(player_data.get('height', 0))} cm | **Weight:** {int(player_data.get('weight', 0))} kg")
-                # Corrected f-string for market value
                 market_value_display = f"€{player_data.get('market_value_eur', 0):,.0f}" if player_data.get('market_value_eur') else 'N/A'
                 st.markdown(f"**Contract Expires:** {player_data.get('contract_expires_year', 'N/A')} | **Market Value:** {market_value_display}")
 
@@ -601,7 +603,6 @@ def main():
                 cols_def_det = st.columns(2)
                 cols_def_det[0].metric("Shots Blocked/90", f"{player_data.get('shots_blocked_per_90', 0):.2f}")
                 cols_def_det[1].metric("Successful Def. Actions/90", f"{player_data.get('successful_defensive_actions_per_90', 0):.2f}")
-
 
                 if 'gk' in player_data.get('position', '').lower():
                     st.markdown("#### Goalkeeping")
@@ -720,8 +721,8 @@ def main():
                 index=display_scatter_options.index('xa /90') if 'xa /90' in display_scatter_options else (1 if len(display_scatter_options)>1 else 0),
                 key='y_axis_metric'
             )
-            x_axis_metric = scatter_options[display_scatter_options.index(y_axis_metric_display)] # Corrected to use y_axis_metric for y
-            y_axis_metric = scatter_options[display_scatter_options.index(y_axis_metric_display)] # Corrected to use y_axis_metric for y
+            x_axis_metric = scatter_options[display_scatter_options.index(x_axis_metric_display)]
+            y_axis_metric = scatter_options[display_scatter_options.index(y_axis_metric_display)]
 
             if x_axis_metric and y_axis_metric and not filtered_df.empty:
                 fig_scatter = px.scatter(
