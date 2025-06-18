@@ -275,127 +275,139 @@ def main():
     # Tabs for different views
     tab1, tab2, tab3 = st.tabs(["📋 Player List", "👤 Player Profiles", "📈 Analytics"])
     
-    with tab1:
-        # AG Grid configuration
-        gb = GridOptionsBuilder.from_dataframe(filtered_df)
+    # ... (inside tab1) ...
+with tab1:
+    # AG Grid configuration
+    gb = GridOptionsBuilder.from_dataframe(filtered_df)
+
+    # Configure default columns
+    gb.configure_default_column(
+        groupable=True,
+        sortable=True,
+        resizable=True,
+        filterable=True,
+        editable=False,
+        wrapText=True
+    )
+
+    # Configure pagination
+    gb.configure_pagination(
+        paginationAutoPageSize=False,
+        paginationPageSize=25
+    )
+
+    # Configure specific columns (no JsCode for Player Name here)
+    numeric_cols = [col for col in filtered_df.columns if pd.api.types.is_numeric_dtype(filtered_df[col])]
+    for col in numeric_cols:
+        gb.configure_column(col, type=["numericColumn", "numberColumnFilter"])
+
+    # Enable row selection
+    gb.configure_selection('single', use_checkbox=True) # or 'multiple' if you want
+    # Removed: gb.configure_column("Player Name", cellRenderer=JsCode(...)) as this is the source of the error
+
+    grid_options = gb.build()
+
+    # Display the grid
+    grid_response = AgGrid(
+        filtered_df,
+        gridOptions=grid_options,
+        height=600,
+        width='100%',
+        theme='streamlit',
+        enable_enterprise_modules=False,
+        update_mode='MODEL_CHANGED',
+        fit_columns_on_grid_load=True,
+        key='players_grid'
+    )
+
+    # Get selected rows
+    selected_players_from_grid = grid_response.get('selected_rows', [])
+
+    # If a player is selected in the grid, set it in session state for the profile tab
+    if selected_players_from_grid:
+        st.session_state['selected_player_for_profile_tab'] = selected_players_from_grid[0]['Player Name']
+    elif 'selected_player_for_profile_tab' not in st.session_state:
+        st.session_state['selected_player_for_profile_tab'] = None
+
+    # Download button
+    st.download_button(
+        "💾 Download Filtered Data",
+        filtered_df.to_csv(index=False),
+        "filtered_players.csv",
+        "text/csv",
+        key='download-csv'
+    )
+
+with tab2:
+    st.subheader("Player Profiles")
+
+    if len(filtered_df) == 0:
+        st.warning("No players match your filters")
+    else:
+        # Use a selectbox for player selection, pre-selecting if a player was chosen from the grid
+        player_names = filtered_df['Player Name'].unique()
         
-        # Configure default columns
-        gb.configure_default_column(
-            groupable=True,
-            sortable=True,
-            resizable=True,
-            filterable=True,
-            editable=False,
-            wrapText=True
+        # Determine default value for selectbox
+        default_player_index = 0
+        if st.session_state.get('selected_player_for_profile_tab') and \
+           st.session_state['selected_player_for_profile_tab'] in player_names:
+            default_player_index = list(player_names).index(st.session_state['selected_player_for_profile_tab'])
+        
+        selected_player = st.selectbox(
+            "Select a player to view detailed profile", 
+            player_names,
+            index=default_player_index
         )
-        
-        # Configure pagination
-        gb.configure_pagination(
-            paginationAutoPageSize=False,
-            paginationPageSize=25
-        )
-        
-        # Configure specific columns
-        numeric_cols = [col for col in filtered_df.columns if pd.api.types.is_numeric_dtype(filtered_df[col])]
-        for col in numeric_cols:
-            gb.configure_column(col, type=["numericColumn", "numberColumnFilter"])
-        
-        # Add custom "View Profile" button
-        gb.configure_column(
-            "Player Name",
-            cellRenderer=JsCode('''
-                function(params) {
-                    return `<a href="#${params.value.replace(/\s+/g, '-')}" 
-                           style="color: #4f8bf9; text-decoration: none;"
-                           onclick="window.parent.document.getElementById('${params.value.replace(/\s+/g, '-')}').scrollIntoView()">
-                           ${params.value}</a>`;
-                }
-            ''')
-        )
-        
-        grid_options = gb.build()
-        
-        # Display the grid
-        grid_response = AgGrid(
-            filtered_df,
-            gridOptions=grid_options,
-            height=600,
-            width='100%',
-            theme='streamlit',
-            enable_enterprise_modules=False,
-            update_mode='MODEL_CHANGED',
-            fit_columns_on_grid_load=True,
-            key='players_grid'
-        )
-        
-        # Download button
-        st.download_button(
-            "💾 Download Filtered Data",
-            filtered_df.to_csv(index=False),
-            "filtered_players.csv",
-            "text/csv",
-            key='download-csv'
-        )
-    
-    with tab2:
-        st.subheader("Player Profiles")
-        
-        if len(filtered_df) == 0:
-            st.warning("No players match your filters")
-        else:
-            # Display player cards with navigation
-            player_names = filtered_df['Player Name'].unique()
-            selected_player = st.selectbox("Select a player to view detailed profile", player_names)
-            
-            if selected_player:
-                player_data = filtered_df[filtered_df['Player Name'] == selected_player].iloc[0]
-                
-                with st.container():
-                    col1, col2 = st.columns([1, 3])
-                    
-                    with col1:
-                        st.image(
-                            "https://via.placeholder.com/150x200?text=Player+Image", 
-                            width=150, 
-                            caption=player_data['Player Name']
-                        )
-                    
-                    with col2:
-                        st.subheader(player_data['Player Name'])
-                        st.caption(f"{player_data.get('Position', 'N/A')} | {player_data.get('Team', 'N/A')} | {player_data.get('League', 'N/A')}")
-                        
-                        cols = st.columns(4)
-                        metric_config = [
-                            ('Age', 'Age'),
-                            ('Goals', 'Goals'),
-                            ('Assists', 'Assists'),
-                            ('Minutes', 'Minutes played')
+
+        if selected_player:
+            player_data = filtered_df[filtered_df['Player Name'] == selected_player].iloc[0]
+
+            with st.container():
+                col1, col2 = st.columns([1, 3])
+
+                with col1:
+                    st.image(
+                        "https://via.placeholder.com/150x200?text=Player+Image",
+                        width=150,
+                        caption=player_data['Player Name']
+                    )
+
+                with col2:
+                    st.subheader(player_data['Player Name'])
+                    st.caption(f"{player_data.get('Position', 'N/A')} | {player_data.get('Team', 'N/A')} | {player_data.get('League', 'N/A')}")
+
+                    cols = st.columns(4)
+                    metric_config = [
+                        ('Age', 'Age'),
+                        ('Goals', 'Goals'),
+                        ('Assists', 'Assists'),
+                        ('Minutes', 'Minutes played')
+                    ]
+
+                    for i, (display_name, col_name) in enumerate(metric_config):
+                        if col_name in player_data:
+                            value = player_data[col_name]
+                            cols[i].metric(display_name, int(value) if isinstance(value, (int, float)) else value)
+                        else:
+                            cols[i].metric(display_name, 'N/A')
+
+                    with st.expander("Detailed Performance Metrics"):
+                        detailed_metrics = [
+                            ('Goals per 90', 'Goals per 90'),
+                            ('xG per 90', 'xG per 90'),
+                            ('Assists per 90', 'Assists per 90'),
+                            ('xA per 90', 'xA per 90'),
+                            ('Pass Accuracy %', 'Pass accuracy %'),
+                            ('Defensive Duels Won %', 'Defensive duels won %')
                         ]
-                        
-                        for i, (display_name, col_name) in enumerate(metric_config):
+
+                        for display_name, col_name in detailed_metrics:
                             if col_name in player_data:
                                 value = player_data[col_name]
-                                cols[i].metric(display_name, int(value) if isinstance(value, (int, float)) else value)
-                            else:
-                                cols[i].metric(display_name, 'N/A')
-                        
-                        with st.expander("Detailed Performance Metrics"):
-                            detailed_metrics = [
-                                ('Goals per 90', 'Goals per 90'),
-                                ('xG per 90', 'xG per 90'),
-                                ('Assists per 90', 'Assists per 90'),
-                                ('xA per 90', 'xA per 90'),
-                                ('Pass Accuracy %', 'Pass accuracy %'),
-                                ('Defensive Duels Won %', 'Defensive duels won %')
-                            ]
-                            
-                            for display_name, col_name in detailed_metrics:
-                                if col_name in player_data:
-                                    value = player_data[col_name]
-                                    if isinstance(value, (int, float)):
-                                        st.text(f"{display_name}: {value:.2f}" if isinstance(value, float) else f"{display_name}: {value}")
-                                    else:
-                                        st.text(f"{display_name}: {value}")
+                                if isinstance(value, (int, float)):
+                                    st.text(f"{display_name}: {value:.2f}" if isinstance(value, float) else f"{display_name}: {value}")
+                                else:
+                                    st.text(f"{display_name}: {value}")
     
     with tab3:
         st.subheader("League Analytics")
