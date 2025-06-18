@@ -7,9 +7,6 @@ from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 from datetime import datetime
 import plotly.express as px
 import numpy as np
-from io import BytesIO
-from PIL import Image
-import base64
 
 # ==============================================
 # CONFIGURATION
@@ -73,133 +70,17 @@ def load_database():
             conn.close()
 
 # ==============================================
-# FILTERING LOGIC
+# UTILITY FUNCTIONS
 # ==============================================
 
-@st.cache_data
-def filter_players(_df, filters):
-    """Apply all filters to the player dataframe"""
-    filtered_df = _df.copy()
-    
-    # Position filter
-    if filters.get('positions'):
-        filtered_df = filtered_df[filtered_df['Position'].isin(filters['positions'])]
-    
-    # Team filter
-    if filters.get('teams'):
-        filtered_df = filtered_df[filtered_df['Team'].isin(filters['teams'])]
-    
-    # League filter
-    if filters.get('leagues'):
-        filtered_df = filtered_df[filtered_df['League'].isin(filters['leagues'])]
-    
-    # Age filter
-    if 'Age' in filtered_df.columns and filters.get('age_range'):
-        filtered_df = filtered_df[
-            (filtered_df['Age'] >= filters['age_range'][0]) & 
-            (filtered_df['Age'] <= filters['age_range'][1])
-        ]
-    
-    # Minutes played filter
-    if 'Minutes played' in filtered_df.columns and filters.get('minutes_range'):
-        filtered_df = filtered_df[
-            (filtered_df['Minutes played'] >= filters['minutes_range'][0]) & 
-            (filtered_df['Minutes played'] <= filters['minutes_range'][1])
-        ]
-    
-    # Metric range filters
-    for metric, (min_val, max_val) in filters.get('metric_ranges', {}).items():
-        if metric in filtered_df.columns:
-            filtered_df = filtered_df[
-                (filtered_df[metric] >= min_val) & 
-                (filtered_df[metric] <= max_val)
-            ]
-    
-    # Nationality filter
-    if filters.get('nationalities'):
-        filtered_df = filtered_df[filtered_df['Passport country'].isin(filters['nationalities'])]
-    
-    # Sorting
-    if filters.get('sort_by') and filters['sort_by'] in filtered_df.columns:
-        filtered_df = filtered_df.sort_values(
-            by=filters['sort_by'], 
-            ascending=filters.get('sort_asc', True)
-        )
-    
-    return filtered_df
-
-# ==============================================
-# UI COMPONENTS
-# ==============================================
-
-def create_player_card(player):
-    """Create a visually appealing player card"""
-    with st.container():
-        col1, col2 = st.columns([1, 3])
-        
-        with col1:
-            # Placeholder for player image
-            st.image(
-                "https://via.placeholder.com/150x200?text=Player+Image", 
-                width=150, 
-                caption=player['Player Name']
-            )
-        
-        with col2:
-            st.subheader(player['Player Name'])
-            st.caption(f"{player.get('Position', 'N/A')} | {player.get('Team', 'N/A')} | {player.get('League', 'N/A')}")
-            
-            # Key metrics
-            cols = st.columns(4)
-            metric_config = [
-                ('Age', 'Age'),
-                ('Goals', 'Goals'),
-                ('Assists', 'Assists'),
-                ('Minutes', 'Minutes played')
-            ]
-            
-            for i, (display_name, col_name) in enumerate(metric_config):
-                if col_name in player:
-                    cols[i].metric(display_name, int(player[col_name]) if isinstance(player[col_name], (int, float)) else player[col_name])
-                else:
-                    cols[i].metric(display_name, 'N/A')
-            
-            # Detailed stats in expander
-            with st.expander("Detailed Performance Metrics"):
-                detailed_metrics = [
-                    ('Goals per 90', 'Goals per 90'),
-                    ('xG per 90', 'xG per 90'),
-                    ('Assists per 90', 'Assists per 90'),
-                    ('xA per 90', 'xA per 90'),
-                    ('Pass Accuracy %', 'Pass accuracy %'),
-                    ('Defensive Duels Won %', 'Defensive duels won %')
-                ]
-                
-                for display_name, col_name in detailed_metrics:
-                    if col_name in player:
-                        value = player[col_name]
-                        if isinstance(value, (int, float)):
-                            st.text(f"{display_name}: {value:.2f}" if isinstance(value, float) else f"{display_name}: {value}")
-                        else:
-                            st.text(f"{display_name}: {value}")
-
-def create_metric_slider(metric_name, df):
-    """Create a range slider for a specific metric"""
-    if metric_name not in df.columns:
-        return None
-    
-    min_val = float(df[metric_name].min())
-    max_val = float(df[metric_name].max())
-    step = 0.01 if max_val - min_val < 5 else 0.1
-    
-    values = st.slider(
-        f"{metric_name} Range",
-        min_val, max_val,
-        (min_val, max_val),
-        step=step,
-        help=f"Filter players by {metric_name}"
-    )
-    return values
+def safe_mean(series, format_str=".2f"):
+    """Safely calculate mean with formatting, handling missing columns"""
+    if series.empty or not pd.api.types.is_numeric_dtype(series):
+        return "N/A"
+    mean_val = series.mean()
+    if pd.isna(mean_val):
+        return "N/A"
+    return f"{mean_val:{format_str}}"
 
 # ==============================================
 # MAIN APP
@@ -277,11 +158,20 @@ def main():
     st.sidebar.markdown("### Performance Metrics")
     metric_ranges = {}
     
-    for metric in ['Goals per 90', 'xG per 90', 'Assists per 90', 'xA per 90']:
+    metric_columns = ['Goals per 90', 'xG per 90', 'Assists per 90', 'xA per 90']
+    for metric in metric_columns:
         if metric in df.columns:
-            values = create_metric_slider(metric, df)
-            if values:
-                metric_ranges[metric] = values
+            min_val = float(df[metric].min())
+            max_val = float(df[metric].max())
+            step = 0.01 if max_val - min_val < 5 else 0.1
+            values = st.sidebar.slider(
+                f"{metric} Range",
+                min_val, max_val,
+                (min_val, max_val),
+                step=step,
+                help=f"Filter players by {metric}"
+            )
+            metric_ranges[metric] = values
     
     # Sorting options
     st.sidebar.markdown("### Sorting")
@@ -322,17 +212,62 @@ def main():
     }
     
     # Apply filters
-    filtered_df = filter_players(df, filters)
+    filtered_df = df.copy()
     
-    # Display summary stats
+    # Position filter
+    if filters.get('positions'):
+        filtered_df = filtered_df[filtered_df['Position'].isin(filters['positions'])]
+    
+    # Team filter
+    if filters.get('teams'):
+        filtered_df = filtered_df[filtered_df['Team'].isin(filters['teams'])]
+    
+    # League filter
+    if filters.get('leagues'):
+        filtered_df = filtered_df[filtered_df['League'].isin(filters['leagues'])]
+    
+    # Age filter
+    if 'Age' in filtered_df.columns and filters.get('age_range'):
+        filtered_df = filtered_df[
+            (filtered_df['Age'] >= filters['age_range'][0]) & 
+            (filtered_df['Age'] <= filters['age_range'][1])
+        ]
+    
+    # Minutes played filter
+    if 'Minutes played' in filtered_df.columns and filters.get('minutes_range'):
+        filtered_df = filtered_df[
+            (filtered_df['Minutes played'] >= filters['minutes_range'][0]) & 
+            (filtered_df['Minutes played'] <= filters['minutes_range'][1])
+        ]
+    
+    # Metric range filters
+    for metric, (min_val, max_val) in filters.get('metric_ranges', {}).items():
+        if metric in filtered_df.columns:
+            filtered_df = filtered_df[
+                (filtered_df[metric] >= min_val) & 
+                (filtered_df[metric] <= max_val)
+            ]
+    
+    # Nationality filter
+    if filters.get('nationalities'):
+        filtered_df = filtered_df[filtered_df['Passport country'].isin(filters['nationalities'])]
+    
+    # Sorting
+    if filters.get('sort_by') and filters['sort_by'] in filtered_df.columns:
+        filtered_df = filtered_df.sort_values(
+            by=filters['sort_by'], 
+            ascending=filters.get('sort_asc', True)
+        )
+    
+    # Display summary stats with safe formatting
     st.markdown(f"""
     <div style="background-color:#f0f2f6;padding:10px;border-radius:5px;margin-bottom:20px;">
         <h4 style="margin:0;">📊 Summary: {len(filtered_df)} players found</h4>
         <div style="display:flex;justify-content:space-between;">
-            <span>Avg Age: {filtered_df['Age'].mean():.1f}</span>
-            <span>Avg Goals/90: {filtered_df['Goals per 90'].mean():.2f if 'Goals per 90' in filtered_df.columns else 'N/A'}</span>
-            <span>Avg xG/90: {filtered_df['xG per 90'].mean():.2f if 'xG per 90' in filtered_df.columns else 'N/A'}</span>
-            <span>Avg Assists/90: {filtered_df['Assists per 90'].mean():.2f if 'Assists per 90' in filtered_df.columns else 'N/A'}</span>
+            <span>Avg Age: {safe_mean(filtered_df['Age'], '.1f')}</span>
+            <span>Avg Goals/90: {safe_mean(filtered_df.get('Goals per 90', pd.Series()))}</span>
+            <span>Avg xG/90: {safe_mean(filtered_df.get('xG per 90', pd.Series()))}</span>
+            <span>Avg Assists/90: {safe_mean(filtered_df.get('Assists per 90', pd.Series()))}</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -414,71 +349,58 @@ def main():
             
             if selected_player:
                 player_data = filtered_df[filtered_df['Player Name'] == selected_player].iloc[0]
-                create_player_card(player_data)
                 
-                # Add analytics section
-                st.markdown("---")
-                st.subheader("Performance Analytics")
-                
-                # Create tabs for different analytics views
-                analytics_tabs = st.tabs(["Trend Analysis", "Comparison", "Advanced Metrics"])
-                
-                with analytics_tabs[0]:
-                    if 'Minutes played' in player_data:
-                        st.markdown(f"**Minutes Played:** {int(player_data['Minutes played'])}")
+                with st.container():
+                    col1, col2 = st.columns([1, 3])
                     
-                    # Add more trend analysis here
-                
-                with analytics_tabs[1]:
-                    # Comparison with league averages
-                    if 'League' in player_data and player_data['League'] in df['League'].unique():
-                        league_avg = df[df['League'] == player_data['League']].mean(numeric_only=True)
+                    with col1:
+                        st.image(
+                            "https://via.placeholder.com/150x200?text=Player+Image", 
+                            width=150, 
+                            caption=player_data['Player Name']
+                        )
+                    
+                    with col2:
+                        st.subheader(player_data['Player Name'])
+                        st.caption(f"{player_data.get('Position', 'N/A')} | {player_data.get('Team', 'N/A')} | {player_data.get('League', 'N/A')}")
                         
-                        comparison_data = pd.DataFrame({
-                            'Metric': ['Goals per 90', 'xG per 90', 'Assists per 90', 'xA per 90'],
-                            'Player': [
-                                player_data.get('Goals per 90', 0),
-                                player_data.get('xG per 90', 0),
-                                player_data.get('Assists per 90', 0),
-                                player_data.get('xA per 90', 0)
-                            ],
-                            'League Average': [
-                                league_avg.get('Goals per 90', 0),
-                                league_avg.get('xG per 90', 0),
-                                league_avg.get('Assists per 90', 0),
-                                league_avg.get('xA per 90', 0)
+                        cols = st.columns(4)
+                        metric_config = [
+                            ('Age', 'Age'),
+                            ('Goals', 'Goals'),
+                            ('Assists', 'Assists'),
+                            ('Minutes', 'Minutes played')
+                        ]
+                        
+                        for i, (display_name, col_name) in enumerate(metric_config):
+                            if col_name in player_data:
+                                value = player_data[col_name]
+                                cols[i].metric(display_name, int(value) if isinstance(value, (int, float)) else value)
+                            else:
+                                cols[i].metric(display_name, 'N/A')
+                        
+                        with st.expander("Detailed Performance Metrics"):
+                            detailed_metrics = [
+                                ('Goals per 90', 'Goals per 90'),
+                                ('xG per 90', 'xG per 90'),
+                                ('Assists per 90', 'Assists per 90'),
+                                ('xA per 90', 'xA per 90'),
+                                ('Pass Accuracy %', 'Pass accuracy %'),
+                                ('Defensive Duels Won %', 'Defensive duels won %')
                             ]
-                        })
-                        
-                        fig = px.bar(
-                            comparison_data.melt(id_vars='Metric'), 
-                            x='Metric', 
-                            y='value',
-                            color='variable',
-                            barmode='group',
-                            title='Comparison with League Averages'
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                
-                with analytics_tabs[2]:
-                    # Radar chart for advanced metrics
-                    if all(m in player_data for m in ['Goals per 90', 'xG per 90', 'Assists per 90', 'xA per 90']):
-                        metrics = ['Goals per 90', 'xG per 90', 'Assists per 90', 'xA per 90']
-                        values = [player_data[m] for m in metrics]
-                        
-                        fig = px.line_polar(
-                            r=values,
-                            theta=metrics,
-                            line_close=True,
-                            title='Performance Radar Chart'
-                        )
-                        fig.update_traces(fill='toself')
-                        st.plotly_chart(fig, use_container_width=True)
+                            
+                            for display_name, col_name in detailed_metrics:
+                                if col_name in player_data:
+                                    value = player_data[col_name]
+                                    if isinstance(value, (int, float)):
+                                        st.text(f"{display_name}: {value:.2f}" if isinstance(value, float) else f"{display_name}: {value}")
+                                    else:
+                                        st.text(f"{display_name}: {value}")
     
     with tab3:
         st.subheader("League Analytics")
         
-        if 'League' in filtered_df.columns:
+        if 'League' in filtered_df.columns and not filtered_df.empty:
             col1, col2 = st.columns(2)
             
             with col1:
@@ -508,7 +430,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
         
         # Age distribution
-        if 'Age' in filtered_df.columns:
+        if 'Age' in filtered_df.columns and not filtered_df.empty:
             fig = px.histogram(
                 filtered_df,
                 x='Age',
