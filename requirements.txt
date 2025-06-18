@@ -4,3 +4,4 @@ altair
 openpyxl
 streamlit-aggrid
 glicko2
+plotly
