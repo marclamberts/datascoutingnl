@@ -166,7 +166,7 @@ def main():
     positions = sorted(df['position'].dropna().unique())
     teams = sorted(df['team'].dropna().unique())
     leagues = sorted(df['league'].dropna().unique())
-    nationalities = sorted(df['passport_country'].dropna().unique())
+    nationalities = sorted(df['Passport country'].dropna().unique())
     preferred_feet = sorted(df['preferred_foot'].dropna().unique())
 
     selected_positions = st.sidebar.multiselect(
