@@ -507,7 +507,7 @@ def main():
 
                 st.markdown(f"<h3 id='player-profile-{selected_player.replace(' ', '-')}' style='color:#4f8bf9;'>{player_data['player_name']}</h3>", unsafe_allow_html=True)
                 st.markdown(f"**Position:** {player_data.get('position', 'N/A')} | **Team:** {player_data.get('team', 'N/A')} | **League:** {player_data.get('league', 'N/A')}")
-                st.markdown(f"**Nationality:** {player_data.get('passport_country', 'N/A')} | **Preferred Foot:** {player_data.get('preferred_foot', 'N/A')}")
+                st.markdown(f"**Nationality:** {player_data.get('Passport country', 'N/A')} | **Preferred Foot:** {player_data.get('preferred_foot', 'N/A')}")
                 st.markdown(f"**Age:** {int(player_data.get('age', 0))} | **Height:** {int(player_data.get('height', 0))} cm | **Weight:** {int(player_data.get('weight', 0))} kg")
                 market_value_display = f"€{player_data.get('market_value_eur', 0):,.0f}" if player_data.get('market_value_eur') else 'N/A'
                 st.markdown(f"**Contract Expires:** {player_data.get('contract_expires_year', 'N/A')} | **Market Value:** {market_value_display}")
