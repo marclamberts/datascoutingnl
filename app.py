@@ -279,13 +279,22 @@ def main():
                 min_val = max(0.0, min_val)
                 max_val = min(100.0, max_val)
 
-            values = st.sidebar.slider(
-                f"{metric.replace('_', ' ').replace('per 90', '/90').replace('perc', '%')}",
-                float(f"{min_val:.2f}"), float(f"{max_val:.2f}"),
-                (float(f"{min_val:.2f}"), float(f"{max_val:.2f}")),
-                step=step,
-                help=f"Filter players by {metric.replace('_', ' ').lower()}."
-            )
+            # Calculate and constrain values
+            min_val = max(0.0, min_val)
+            max_val = min(100.0, max_val)
+            
+            # Check if slider can be created
+            if min_val >= max_val:
+                st.warning(f"Cannot create slider for {metric}: min and max values are the same ({min_val}). Skipping.")
+                continue  # Skip this iteration if inside a loop
+            else:
+                values = st.sidebar.slider(
+                    f"{metric.replace('_', ' ').replace('per 90', '/90').replace('per90', '/90')}",
+                    float(f"{min_val:.2f}"),
+                    float(f"{max_val:.2f}"),
+                    (float(f"{min_val:.2f}"), float(f"{max_val:.2f}")),
+                )
+
             metric_ranges[metric] = values
         else:
             st.sidebar.info(f"{metric.replace('_', ' ').replace('per 90', '/90').replace('perc', '%')} data not available for filtering.")
