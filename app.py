@@ -106,7 +106,7 @@ def load_database(db_path):
                 df[new_per90_col] = 0
 
         # Ensure essential columns exist after all processing
-        essential_str_cols = ['position', 'team', 'league', 'passport_country', 'preferred_foot']
+        essential_str_cols = ['position', 'team', 'league', 'Passport country', 'preferred_foot']
         for col in essential_str_cols:
             if col not in df.columns:
                 df[col] = 'Unknown'
