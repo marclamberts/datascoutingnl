@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.image as mpimg
 import os
 from sklearn.preprocessing import StandardScaler
 from fpdf import FPDF
@@ -21,7 +22,6 @@ if not os.path.exists(DATA_PATH):
     st.stop()
 
 @st.cache_data
-
 def load_data(path):
     df = pd.read_excel(path)
     df.columns = df.columns.str.strip()
@@ -30,15 +30,13 @@ def load_data(path):
 df = load_data(DATA_PATH)
 
 # ------------------------------------------------
-# USER SELECTION
+# SIDEBAR FILTERS
 # ------------------------------------------------
-st.title("⚽ Player Percentile Dashboard")
-
+st.sidebar.title("⚽ Player Selector")
 positions = sorted(df['Position'].dropna().unique())
 players = df[df['Minutes played'] >= 500]['Player'].unique()
-
-selected_player = st.selectbox("Select a Player", players)
-selected_role = st.radio("Select Role Type", ["Attacking", "Midfield", "Defensive"], horizontal=True)
+selected_player = st.sidebar.selectbox("Select a Player", players)
+selected_role = st.sidebar.radio("Select Role Type", ["Attacking", "Midfield", "Defensive"])
 
 # ------------------------------------------------
 # ROLE-BASED METRICS
@@ -72,10 +70,10 @@ for metric in metrics:
 # ------------------------------------------------
 # BAR PERCENTILE VISUAL
 # ------------------------------------------------
-st.markdown(f"### 📊 {selected_player} — {selected_role} Metrics")
+st.title("📊 Player Percentile Metrics")
 
-fig, ax = plt.subplots(figsize=(12, 8), facecolor='#333333')
-ax.set_facecolor('#333333')
+fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
+ax.set_facecolor('white')
 
 for i, metric in enumerate(metrics):
     if metric in df.columns:
@@ -85,20 +83,28 @@ for i, metric in enumerate(metrics):
 
         bar = ax.barh(i, percentile_rank, alpha=0.8, color=color)
         ax.text(bar[0].get_width() + 2, bar[0].get_y() + bar[0].get_height() / 2,
-                f'{int(percentile_rank)}', va='center', ha='left', color='white', fontsize=11)
+                f'{int(percentile_rank)}', va='center', ha='left', color='black', fontsize=11)
 
-ax.axvline(50, color='lightgrey', linestyle='--')
+ax.axvline(50, color='grey', linestyle='--')
 ax.set_yticks(range(len(metrics)))
-ax.set_yticklabels(metrics, color='white', fontsize=12)
+ax.set_yticklabels(metrics, color='black', fontsize=11)
 ax.set_xlim(0, 100)
-ax.set_xlabel('Percentile Rank', color='white')
-ax.set_title(f"{selected_player} | {player_df['Team'].values[0]} | {selected_role} Profile", fontsize=18, color='white')
+ax.set_xlabel('Percentile Rank', color='black')
+ax.set_title(f"{selected_player} | {player_df['Team'].values[0]} | {selected_role} Profile", fontsize=16, color='black')
 
 # Styling
-ax.tick_params(axis='x', colors='white')
-ax.tick_params(axis='y', colors='white')
+ax.tick_params(axis='x', colors='black')
+ax.tick_params(axis='y', colors='black')
 for spine in ax.spines.values():
     spine.set_visible(False)
+
+# ------------------------------------------------
+# ADD LOGO
+# ------------------------------------------------
+logo_path = "wa2.png"
+if os.path.exists(logo_path):
+    logo_img = mpimg.imread(logo_path)
+    fig.figimage(logo_img, xo=fig.bbox.xmax - 150, yo=fig.bbox.ymax - 130, zorder=10, alpha=0.5)
 
 plt.tight_layout()
 st.pyplot(fig)
