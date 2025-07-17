@@ -12,7 +12,7 @@ st.set_page_config(page_title="Wyscout Scouting Tool", layout="wide")
 # ------------------------------------------------
 # LOAD DATA
 # ------------------------------------------------
-DATA_PATH = os.path.join("data", "Netherlands II.xlsx")
+DATA_PATH = os.path.join("Netherlands II.xlsx")
 if not os.path.exists(DATA_PATH):
     st.error(f"Excel file not found at: {DATA_PATH}")
     st.stop()
