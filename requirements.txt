@@ -6,3 +6,4 @@ streamlit-aggrid
 glicko2
 plotly
 matplotlib
+seaborn
