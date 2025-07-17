@@ -34,9 +34,15 @@ df = load_data(DATA_PATH)
 # ------------------------------------------------
 st.sidebar.title("⚽ Player Selector")
 positions = sorted(df['Position'].dropna().unique())
+teams = sorted(df['Team within selected timeframe'].dropna().unique())
 players = df[df['Minutes played'] >= 500]['Player'].unique()
+selected_team = st.sidebar.selectbox("Team", ["All"] + teams)
 selected_player = st.sidebar.selectbox("Select a Player", players)
 selected_role = st.sidebar.radio("Select Role Type", ["Attacking", "Midfield", "Defensive"])
+
+# Filter by team if selected
+if selected_team != "All":
+    df = df[df['Team within selected timeframe'] == selected_team]
 
 # ------------------------------------------------
 # ROLE-BASED METRICS
@@ -68,45 +74,62 @@ for metric in metrics:
         percentile_ranks[metric] = df[metric].rank(pct=True) * 99
 
 # ------------------------------------------------
-# BAR PERCENTILE VISUAL
+# MAIN TABS
 # ------------------------------------------------
-st.title("📊 Player Percentile Metrics")
-
-fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
-ax.set_facecolor('white')
-
-for i, metric in enumerate(metrics):
-    if metric in df.columns:
-        metric_value = player_df[metric].values[0]
-        percentile_rank = percentile_ranks[metric][player_df.index[0]]
-        color = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['red', 'orange', 'green'])(percentile_rank / 99)
-
-        bar = ax.barh(i, percentile_rank, alpha=0.8, color=color)
-        ax.text(bar[0].get_width() + 2, bar[0].get_y() + bar[0].get_height() / 2,
-                f'{int(percentile_rank)}', va='center', ha='left', color='black', fontsize=11)
-
-ax.axvline(50, color='grey', linestyle='--')
-ax.set_yticks(range(len(metrics)))
-ax.set_yticklabels(metrics, color='black', fontsize=11)
-ax.set_xlim(0, 100)
-ax.set_xlabel('Percentile Rank', color='black')
-ax.set_title(f"{selected_player} | {player_df['Team'].values[0]} | {selected_role} Profile", fontsize=16, color='black')
-
-# Styling
-ax.tick_params(axis='x', colors='black')
-ax.tick_params(axis='y', colors='black')
-for spine in ax.spines.values():
-    spine.set_visible(False)
+tab1, tab2 = st.tabs(["🎯 Player Percentiles", "📈 U23 Elite Table"])
 
 # ------------------------------------------------
-# ADD LOGO
+# BAR PERCENTILE VISUAL TAB
 # ------------------------------------------------
-logo_path = "wa2.png"
-if os.path.exists(logo_path):
-    logo_img = mpimg.imread(logo_path)
-    fig.figimage(logo_img, xo=fig.bbox.xmax - 150, yo=fig.bbox.ymax - 130, zorder=10, alpha=0.5)
+with tab1:
+    st.title("📊 Player Percentile Metrics")
 
-plt.tight_layout()
-st.pyplot(fig)
+    fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
+    ax.set_facecolor('white')
 
-st.caption("Percentile ranks vs players with >500 minutes | Data: Wyscout")
+    for i, metric in enumerate(metrics):
+        if metric in df.columns:
+            metric_value = player_df[metric].values[0]
+            percentile_rank = percentile_ranks[metric][player_df.index[0]]
+            color = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['red', 'orange', 'green'])(percentile_rank / 99)
+
+            bar = ax.barh(i, percentile_rank, alpha=0.8, color=color)
+            ax.text(bar[0].get_width() + 2, bar[0].get_y() + bar[0].get_height() / 2,
+                    f'{int(percentile_rank)}', va='center', ha='left', color='black', fontsize=11)
+
+    ax.axvline(50, color='grey', linestyle='--')
+    ax.set_yticks(range(len(metrics)))
+    ax.set_yticklabels(metrics, color='black', fontsize=11)
+    ax.set_xlim(0, 100)
+    ax.set_xlabel('Percentile Rank', color='black')
+    ax.set_title(f"{selected_player} | {player_df['Team within selected timeframe'].values[0]} | {selected_role} Profile", fontsize=16, color='black')
+
+    ax.tick_params(axis='x', colors='black')
+    ax.tick_params(axis='y', colors='black')
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    logo_path = "wa2.png"
+    if os.path.exists(logo_path):
+        logo_img = mpimg.imread(logo_path)
+        fig.figimage(logo_img, xo=fig.bbox.xmax - 150, yo=fig.bbox.ymax - 130, zorder=10, alpha=0.5)
+
+    plt.tight_layout()
+    st.pyplot(fig)
+    st.caption("Percentile ranks vs players with >500 minutes | Data: Wyscout")
+
+# ------------------------------------------------
+# U23 ELITE TABLE TAB
+# ------------------------------------------------
+with tab2:
+    st.title("📈 U23 Best Per 30 Stats")
+    u23_df = df[(df['Age'] <= 23) & (df['Minutes played'] >= 300)]
+    per30_df = u23_df.copy()
+    per30_df['Goals per 30'] = per30_df['Goals per 90'] / 3
+    per30_df['xG per 30'] = per30_df['xG per 90'] / 3
+    per30_df['Assists per 30'] = per30_df['Assists per 90'] / 3
+    per30_df['xA per 30'] = per30_df['xA per 90'] / 3
+
+    columns_to_show = ['Player', 'Team within selected timeframe', 'Age', 'Goals per 30', 'xG per 30', 'Assists per 30', 'xA per 30']
+    display_df = per30_df[columns_to_show].sort_values(by='Goals per 30', ascending=False).reset_index(drop=True)
+    st.dataframe(display_df, use_container_width=True)
