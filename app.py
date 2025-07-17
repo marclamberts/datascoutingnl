@@ -45,10 +45,7 @@ if selected_team != "All":
 players = sorted(filtered_df['Player'].unique())
 selected_player = st.sidebar.selectbox("Select a Player", ["All"] + players)
 selected_role = st.sidebar.radio("Select Role Type", ["Attacking", "Midfield", "Defensive"])
-
-# Further filter for selected player
-if selected_player != "All":
-    filtered_df = filtered_df[filtered_df['Player'] == selected_player]
+percentile_scope = st.sidebar.radio("Percentile Comparison", ["League", "Team"])
 
 # ------------------------------------------------
 # ROLE-BASED METRICS
@@ -70,13 +67,11 @@ metric_groups = {
 
 metrics = metric_groups[selected_role]
 
-# ------------------------------------------------
-# PERCENTILE CALCULATION
-# ------------------------------------------------
-percentile_ranks = {}
-for metric in metrics:
-    if metric in filtered_df.columns:
-        percentile_ranks[metric] = filtered_df[metric].rank(pct=True) * 99
+# Determine scope for percentile comparison
+if percentile_scope == "Team" and selected_team != "All":
+    comparison_df = df[(df['Team within selected timeframe'] == selected_team) & (df['Minutes played'] >= 500)]
+else:
+    comparison_df = df[df['Minutes played'] >= 500]
 
 # ------------------------------------------------
 # MAIN TABS
@@ -92,11 +87,17 @@ with tab1:
     if selected_player != "All" and not filtered_df.empty:
         player_df = filtered_df[filtered_df['Player'] == selected_player]
 
+        # Calculate percentiles against selected comparison group
+        percentile_ranks = {}
+        for metric in metrics:
+            if metric in comparison_df.columns:
+                percentile_ranks[metric] = comparison_df[metric].rank(pct=True) * 99
+
         fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
         ax.set_facecolor('white')
 
         for i, metric in enumerate(metrics):
-            if metric in filtered_df.columns:
+            if metric in comparison_df.columns:
                 metric_value = player_df[metric].values[0]
                 percentile_rank = percentile_ranks[metric][player_df.index[0]]
                 color = mcolors.LinearSegmentedColormap.from_list('custom_cmap', ['red', 'orange', 'green'])(percentile_rank / 99)
@@ -120,11 +121,11 @@ with tab1:
         logo_path = "wa2.png"
         if os.path.exists(logo_path):
             logo_img = mpimg.imread(logo_path)
-            fig.figimage(logo_img, xo=fig.bbox.xmax - 150, yo=fig.bbox.ymax - 130, zorder=10, alpha=0.5)
+            fig.figimage(logo_img, xo=fig.bbox.xmax - 150, yo=fig.bbox.ymax - 130, zorder=10, alpha=0.2)
 
         plt.tight_layout()
         st.pyplot(fig)
-        st.caption("Percentile ranks vs players with >500 minutes | Data: Wyscout")
+        st.caption(f"Percentile ranks vs players with >500 minutes | Scope: {percentile_scope}")
     else:
         st.info("Please select a player to view percentile chart.")
 
