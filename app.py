@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-<<<<<<< HEAD
 import matplotlib.pyplot as plt
 import numpy as np
 =======
@@ -16,7 +15,7 @@ from sqlite3 import Error
 # CONFIGURATION
 # ==============================================
 
-<<<<<<< HEAD
+
 st.title("📊 Wyscout Player Finder")
 
 # --- Upload Excel file ---
