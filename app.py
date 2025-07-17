@@ -33,21 +33,22 @@ df = load_data(DATA_PATH)
 # ------------------------------------------------
 # SIDEBAR FILTERS
 # ------------------------------------------------
-st.sidebar.title("⚽ Player Scouting Tool")
+st.sidebar.title("⚽ Player Scouting Tool (FBref Style)")
 
-st.sidebar.subheader("Player Filters")
+st.sidebar.subheader("🎛 Filters")
 positions = sorted(df['Position'].dropna().unique())
 teams = sorted(df['Team'].dropna().unique())
-selected_positions = st.sidebar.multiselect("Position(s)", positions)
-selected_teams = st.sidebar.multiselect("Team(s)", teams)
-age_range = st.sidebar.slider("Age Range", int(df['Age'].min()), int(df['Age'].max()), (18, 30))
-minutes_range = st.sidebar.slider("Minutes Played", int(df['Minutes played'].min()), int(df['Minutes played'].max()), (500, 3000))
+selected_positions = st.sidebar.multiselect("📌 Position(s)", positions)
+selected_teams = st.sidebar.multiselect("🏟 Team(s)", teams)
+age_range = st.sidebar.slider("🎂 Age Range", int(df['Age'].min()), int(df['Age'].max()), (18, 30))
+minutes_range = st.sidebar.slider("⏱ Minutes Played", int(df['Minutes played'].min()), int(df['Minutes played'].max()), (500, 3000))
 
-# Role selector
 roles = ["None", "Striker", "Creator", "Destroyer"]
-selected_role = st.sidebar.selectbox("Scouting Role (Score Model)", roles)
+selected_role = st.sidebar.selectbox("🧮 Role (Scoring Model)", roles)
 
-# Define role-based scores
+# ------------------------------------------------
+# SCORING FUNCTION
+# ------------------------------------------------
 def calculate_role_score(row, role):
     if role == "Striker":
         return 0.4 * row.get("xG per 90", 0) + 0.4 * row.get("Goals per 90", 0) + 0.2 * row.get("Shots on target, %", 0)
@@ -77,7 +78,7 @@ filters = {
 }
 
 # ------------------------------------------------
-# FILTERING LOGIC
+# FILTERING
 # ------------------------------------------------
 filtered_df = df.copy()
 if selected_positions:
@@ -100,14 +101,14 @@ if selected_role != "None":
 tab1, tab2, tab3 = st.tabs(["Filtered Players", "Player Profile", "Analytics"])
 
 with tab1:
-    st.title("🎯 Filtered Players")
+    st.markdown("## 🎯 Filtered Players")
     st.dataframe(filtered_df, use_container_width=True)
-    st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_players.csv")
+    st.download_button("⬇ Download CSV", filtered_df.to_csv(index=False), "filtered_players.csv")
 
 with tab2:
-    st.title("📌 Player Profile Viewer")
+    st.markdown("## 🧍‍♂️ Player Profile")
     if not filtered_df.empty:
-        selected_players = st.multiselect("Select up to 3 players", filtered_df['Player'].unique(), max_selections=3)
+        selected_players = st.multiselect("Compare up to 3 players", filtered_df['Player'].unique(), max_selections=3)
         for player in selected_players:
             pdata = filtered_df[filtered_df['Player'] == player].iloc[0]
 
@@ -115,27 +116,27 @@ with tab2:
             st.markdown(f"**Team:** {pdata['Team']} | **Position:** {pdata['Position']} | **Age:** {pdata['Age']}")
             st.markdown(f"**Market Value:** {pdata.get('Market value', 'N/A')} | **Contract Expires:** {pdata.get('Contract expires', 'N/A')}")
 
-            st.subheader("Key Stats")
-            stats_cols = [
-                ("Goals/90", "Goals per 90"),
-                ("xG/90", "xG per 90"),
-                ("Assists/90", "Assists per 90"),
-                ("xA/90", "xA per 90"),
-                ("Shots/90", "Shots per 90"),
-                ("Key Passes/90", "Key passes per 90"),
-                ("Dribbles/90", "Dribbles per 90"),
-                ("Successful Dribbles %", "Successful dribbles, %"),
-                ("Def. Duels/90", "Defensive duels per 90"),
-                ("Def. Duels Won %", "Defensive duels won, %")
-            ]
-            for i in range(0, len(stats_cols), 4):
-                cols = st.columns(4)
-                for j, (label, key) in enumerate(stats_cols[i:i+4]):
-                    value = pdata.get(key, 0)
-                    display = f"{value:.2f}" if 'per' in key else f"{value}%"
-                    cols[j].metric(label, display)
+            with st.expander("📊 Stats Summary"):
+                stats_cols = [
+                    ("Goals/90", "Goals per 90"),
+                    ("xG/90", "xG per 90"),
+                    ("Assists/90", "Assists per 90"),
+                    ("xA/90", "xA per 90"),
+                    ("Shots/90", "Shots per 90"),
+                    ("Key Passes/90", "Key passes per 90"),
+                    ("Dribbles/90", "Dribbles per 90"),
+                    ("Successful Dribbles %", "Successful dribbles, %"),
+                    ("Def. Duels/90", "Defensive duels per 90"),
+                    ("Def. Duels Won %", "Defensive duels won, %")
+                ]
+                for i in range(0, len(stats_cols), 4):
+                    cols = st.columns(4)
+                    for j, (label, key) in enumerate(stats_cols[i:i+4]):
+                        value = pdata.get(key, 0)
+                        display = f"{value:.2f}" if 'per' in key else f"{value}%"
+                        cols[j].metric(label, display)
 
-            st.subheader("Radar Chart")
+            st.markdown("### 📈 Radar Chart")
             radar_metrics = {
                 "Goals per 90": pdata.get("Goals per 90", 0),
                 "xG per 90": pdata.get("xG per 90", 0),
@@ -159,37 +160,25 @@ with tab2:
             ax.set_title(f"{pdata['Player']} Radar Chart", fontsize=14)
             st.pyplot(fig)
 
-        if st.button("📄 Generate PDF Report") and selected_players:
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            for player in selected_players:
-                pdf.cell(200, 10, txt=f"Player Report: {player}", ln=True)
-            pdf.output("player_report.pdf")
-            with open("player_report.pdf", "rb") as f:
-                st.download_button("Download PDF", f, file_name="player_report.pdf")
-    else:
-        st.warning("No players match current filters.")
-
 with tab3:
-    st.title("📊 Analytics")
+    st.markdown("## 📊 Analytics")
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
     numeric_cols = [col for col in numeric_cols if df[col].nunique() > 1]
 
     if not filtered_df.empty:
-        x_axis = st.selectbox("X-axis", numeric_cols, index=0)
-        y_axis = st.selectbox("Y-axis", numeric_cols, index=1)
+        x_axis = st.selectbox("📈 X-axis", numeric_cols, index=0)
+        y_axis = st.selectbox("📉 Y-axis", numeric_cols, index=1)
 
-        st.subheader("Scatter Plot")
+        st.markdown("### 🔹 Scatter Plot")
         st.scatter_chart(filtered_df[[x_axis, y_axis]])
 
-        st.subheader("Correlation Heatmap")
+        st.markdown("### 🔸 Correlation Heatmap")
         corr = filtered_df[numeric_cols].corr()
         fig, ax = plt.subplots(figsize=(10, 8))
         sns.heatmap(corr, cmap="coolwarm", annot=False, fmt=".2f", ax=ax)
         st.pyplot(fig)
 
-        st.subheader("PCA Clustering")
+        st.markdown("### 🔺 PCA Clustering")
         pca_features = filtered_df[numeric_cols].fillna(0)
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(pca_features)
