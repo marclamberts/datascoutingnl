@@ -7,4 +7,4 @@ glicko2
 plotly
 matplotlib
 Seaborn
-sklearn
+sklearn.preprocessing
