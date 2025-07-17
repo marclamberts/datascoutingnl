@@ -11,7 +11,6 @@ import plotly.graph_objects as go
 import os
 import sqlite3
 from sqlite3 import Error
->>>>>>> 83df0ba8b43f4ec73298073ab5cc966d2f09f69f
 
 # ==============================================
 # CONFIGURATION
