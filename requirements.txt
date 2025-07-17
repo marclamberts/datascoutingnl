@@ -9,3 +9,4 @@ plotly
 matplotlib
 Seaborn
 sklearn.preprocessing
+fpdf
