@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 
 # ------------------------------------------------
@@ -42,6 +43,7 @@ selected_teams = st.sidebar.multiselect("Team(s)", teams)
 age_range = st.sidebar.slider("Age Range", int(df['Age'].min()), int(df['Age'].max()), (18, 30))
 minutes_range = st.sidebar.slider("Minutes Played", int(df['Minutes played'].min()), int(df['Minutes played'].max()), (500, 3000))
 
+# Dynamic metric filters
 def metric_range(label):
     options = ['All', '0 - 0.3', '0.3 - 0.6', '0.6+']
     selected = st.sidebar.selectbox(label, options, key=label)
@@ -106,6 +108,18 @@ with tab2:
         col3.metric("Assists/90", round(pdata.get("Assists per 90", 0), 2))
         col4.metric("xA/90", round(pdata.get("xA per 90", 0), 2))
 
+        col5, col6, col7, col8 = st.columns(4)
+        col5.metric("Shots/90", round(pdata.get("Shots per 90", 0), 2))
+        col6.metric("Key Passes/90", round(pdata.get("Key passes per 90", 0), 2))
+        col7.metric("Dribbles/90", round(pdata.get("Dribbles per 90", 0), 2))
+        col8.metric("Successful Dribbles %", f"{pdata.get('Successful dribbles, %', 0)}%")
+
+        col9, col10 = st.columns(2)
+        col9.metric("Def. Duels/90", round(pdata.get("Defensive duels per 90", 0), 2))
+        col10.metric("Def. Duels Won %", f"{pdata.get('Defensive duels won, %', 0)}%")
+
+        st.markdown("---")
+        st.subheader("Radar Chart")
         if st.checkbox("📈 Show Radar Chart"):
             radar_metrics = {
                 "Goals per 90": pdata.get("Goals per 90", 0),
@@ -113,7 +127,9 @@ with tab2:
                 "Assists per 90": pdata.get("Assists per 90", 0),
                 "xA per 90": pdata.get("xA per 90", 0),
                 "Shots per 90": pdata.get("Shots per 90", 0),
-                "Key passes per 90": pdata.get("Key passes per 90", 0)
+                "Key passes per 90": pdata.get("Key passes per 90", 0),
+                "Dribbles per 90": pdata.get("Dribbles per 90", 0),
+                "Progressive runs per 90": pdata.get("Progressive runs per 90", 0)
             }
             labels = list(radar_metrics.keys())
             values = list(radar_metrics.values())
@@ -125,7 +141,7 @@ with tab2:
             ax.plot(angles, values, "o-", linewidth=2)
             ax.fill(angles, values, alpha=0.25)
             ax.set_thetagrids(np.degrees(angles[:-1]), labels)
-            ax.set_title(f"{pdata['Player']} Radar Chart", fontsize=14)
+            ax.set_title(f"{pdata['Player']} Performance Radar", fontsize=14)
             st.pyplot(fig)
     else:
         st.warning("No players match current filters.")
@@ -140,6 +156,13 @@ with tab3:
     y_axis = st.selectbox("Y-axis", numeric_cols, index=1)
 
     if not filtered_df.empty:
+        st.subheader("Scatter Plot")
         st.scatter_chart(filtered_df[[x_axis, y_axis]])
+
+        st.subheader("Correlation Heatmap")
+        corr = filtered_df[numeric_cols].corr()
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(corr, cmap="coolwarm", annot=False, fmt=".2f", ax=ax)
+        st.pyplot(fig)
     else:
         st.info("No data available for chart.")
