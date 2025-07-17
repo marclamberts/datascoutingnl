@@ -31,6 +31,14 @@ def load_data(path):
 df = load_data(DATA_PATH)
 
 # ------------------------------------------------
+# PERCENTILE RANKING
+# ------------------------------------------------
+numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+for col in numeric_cols:
+    perc_col = col + " Percentile"
+    df[perc_col] = df[col].rank(pct=True) * 100
+
+# ------------------------------------------------
 # SIDEBAR FILTERS
 # ------------------------------------------------
 st.sidebar.title("⚽ Player Scouting Tool (FBref Style)")
@@ -133,7 +141,8 @@ with tab2:
                     cols = st.columns(4)
                     for j, (label, key) in enumerate(stats_cols[i:i+4]):
                         value = pdata.get(key, 0)
-                        display = f"{value:.2f}" if 'per' in key else f"{value}%"
+                        percentile = pdata.get(key + " Percentile", 0)
+                        display = f"{value:.2f} ({percentile:.0f}th %ile)"
                         cols[j].metric(label, display)
 
             st.markdown("### 📈 Radar Chart")
