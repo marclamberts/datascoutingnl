@@ -9,7 +9,7 @@ st.set_page_config(page_title="Wyscout Player Finder", layout="wide")
 # CONFIG & LOAD EXCEL
 # =============================================
 
-EXCEL_PATH = os.path.join("/Users/user/Documents/GitHub/datascoutingnl/Netherlands II.xlsx")
+EXCEL_PATH = os.path.join("Netherlands II.xlsx")
 
 if not os.path.exists(EXCEL_PATH):
     st.error(f"Excel file not found at: {EXCEL_PATH}")
