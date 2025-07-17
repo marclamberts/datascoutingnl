@@ -137,7 +137,7 @@ if uploaded_file:
             ax.set_thetagrids(np.degrees(angles[:-1]), labels)
             ax.set_title(f"{selected_player} — Radar", fontsize=14)
             st.pyplot(fig)
-=======
+
 st.set_page_config(
     page_title="Wyscout Player Finder Pro",
     page_icon=":soccer:",
