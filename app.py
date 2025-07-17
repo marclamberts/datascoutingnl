@@ -26,42 +26,39 @@ def load_data(path):
 df = load_data(DATA_PATH)
 
 # ------------------------------------------------
-# NAVIGATION MENU
+# SIDEBAR FILTERS
 # ------------------------------------------------
-with st.sidebar:
-    st.title("⚽ Player Scouting Tool")
-    menu = st.radio("Go to", ["Filtered Players", "Player Profile", "Analytics"], index=0)
-    st.markdown("---")
+st.sidebar.title("⚽ Player Scouting Tool")
 
-    # --- Sidebar Filters ---
-    st.subheader("Player Filters")
+# --- Sidebar Filters ---
+st.sidebar.subheader("Player Filters")
 
-    positions = sorted(df['Position'].dropna().unique())
-    teams = sorted(df['Team'].dropna().unique())
+positions = sorted(df['Position'].dropna().unique())
+teams = sorted(df['Team'].dropna().unique())
 
-    selected_positions = st.multiselect("Position(s)", positions)
-    selected_teams = st.multiselect("Team(s)", teams)
+selected_positions = st.sidebar.multiselect("Position(s)", positions)
+selected_teams = st.sidebar.multiselect("Team(s)", teams)
 
-    age_range = st.slider("Age Range", int(df['Age'].min()), int(df['Age'].max()), (18, 30))
-    minutes_range = st.slider("Minutes Played", int(df['Minutes played'].min()), int(df['Minutes played'].max()), (500, 3000))
+age_range = st.sidebar.slider("Age Range", int(df['Age'].min()), int(df['Age'].max()), (18, 30))
+minutes_range = st.sidebar.slider("Minutes Played", int(df['Minutes played'].min()), int(df['Minutes played'].max()), (500, 3000))
 
-    def metric_range(label):
-        options = ['All', '0 - 0.3', '0.3 - 0.6', '0.6+']
-        selected = st.selectbox(label, options, key=label)
-        if selected == '0 - 0.3':
-            return lambda x: 0 <= x < 0.3
-        elif selected == '0.3 - 0.6':
-            return lambda x: 0.3 <= x < 0.6
-        elif selected == '0.6+':
-            return lambda x: x >= 0.6
-        return lambda x: True
+def metric_range(label):
+    options = ['All', '0 - 0.3', '0.3 - 0.6', '0.6+']
+    selected = st.sidebar.selectbox(label, options, key=label)
+    if selected == '0 - 0.3':
+        return lambda x: 0 <= x < 0.3
+    elif selected == '0.3 - 0.6':
+        return lambda x: 0.3 <= x < 0.6
+    elif selected == '0.6+':
+        return lambda x: x >= 0.6
+    return lambda x: True
 
-    filters = {
-        "Goals per 90": metric_range("Goals per 90"),
-        "xG per 90": metric_range("xG per 90"),
-        "Assists per 90": metric_range("Assists per 90"),
-        "xA per 90": metric_range("xA per 90")
-    }
+filters = {
+    "Goals per 90": metric_range("Goals per 90"),
+    "xG per 90": metric_range("xG per 90"),
+    "Assists per 90": metric_range("Assists per 90"),
+    "xA per 90": metric_range("xA per 90")
+}
 
 # ------------------------------------------------
 # FILTERING LOGIC
@@ -82,14 +79,16 @@ for col, condition in filters.items():
         filtered_df = filtered_df[filtered_df[col].apply(lambda x: condition(x) if pd.notnull(x) else False)]
 
 # ------------------------------------------------
-# TABS BASED ON MENU
+# TOP TABS
 # ------------------------------------------------
-if menu == "Filtered Players":
+tab1, tab2, tab3 = st.tabs(["Filtered Players", "Player Profile", "Analytics"])
+
+with tab1:
     st.title("🎯 Filtered Players")
     st.dataframe(filtered_df, use_container_width=True)
     st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_players.csv")
 
-elif menu == "Player Profile":
+with tab2:
     st.title("📌 Player Profile Viewer")
 
     if not filtered_df.empty:
@@ -131,7 +130,7 @@ elif menu == "Player Profile":
     else:
         st.warning("No players match current filters.")
 
-elif menu == "Analytics":
+with tab3:
     st.title("📊 Analytics")
 
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
